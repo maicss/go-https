@@ -59,7 +59,7 @@
 1. 创建服务器证书秘钥
 
 	```shell
-	$openssl genrsa –des3 -out server.key 2048
+	$openssl genrsa -des3 -out root.key 2048
 	```
 
 	需要输入两次私钥密码                                    
