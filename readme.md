@@ -1,9 +1,9 @@
-#Nodejs搭建单、双向自认证HTTPS服务器
+# Nodejs搭建单、双向自认证HTTPS服务器
 
-###前言
+### 前言
 >2015年双11期间淘宝、天猫实现了全站式https安全传输，web安全问题已经成了人们关注的话题，那什么是https呢？如何实现单、双向自认证https服务器呢？接下来我们将一一介绍。
 
-##一、HTTPS相关概念已经认证流程
+## 一、HTTPS相关概念已经认证流程
 ######基本概念：
 [**HTTPS**](http://baike.baidu.com/link?url=XuEFqp8HTAIWBO12QMzj54K1iIBGPL6VJGPEn85nyCirdG8LE104hMYvOeDgfucyMf3gu1zPLap3i0BKb-SKHa)（全称：Hyper Text Transfer Protocol over Secure Socket Layer），是以安全为目标的HTTP通道，简单讲是HTTP的安全版。即HTTP下加入SSL层，HTTPS的安全基础是SSL，因此加密的详细内容就需要SSL。 它是一个URI scheme（抽象标识符体系），句法类同http:体系。用于安全的HTTP数据传输。https:URL表明它使用了HTTP，但HTTPS存在不同于HTTP的默认端口及一个加密/身份验证层（在HTTP与TCP之间）。这个系统的最初研发由网景公司(Netscape)进行，并内置于其浏览器Netscape Navigator中，提供了身份验证与加密通讯方法。现在它被广泛用于万维网上安全敏感的通讯，例如交易支付方面。关于https详细介绍请见：[大型网站的HTTPS实践](http://studygolang.com/articles/2984)。
 
@@ -81,7 +81,7 @@
 
 	"Common Name"最好跟网站的域名一致                           
 	![](/res/6.png)
-4. 创建服务器证书server.crt
+4. 创建服务器证书server.crt 【失效于2017年】
 
 	```shell
 	$openssl x509 -req -days 365 -sha256 -extensions v3_req -CA root.crt -CAkey root.key -CAcreateserial -in server.csr -out server.crt
@@ -89,6 +89,31 @@
 
 	需要输入根私钥密码                                     
 	![](/res/7.png)                                          
+
+**2017年7月注：**
+新版的浏览器不再认为没有`Subject Alternative Names`的证书是安全的证书了，[链接](https://www.chromestatus.com/feature/4981025180483584)
+
+所以上一步的制作要添加一个参数：`v3.ext`
+
+创建一个名为`v3.ext`的文件
+```
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+# 后面两个随你，一般本地测试的只要有localhost就可以了
+DNS.2 = 127.0.0.1
+DNS.3 = 192.168.2.144
+```
+
+然后使用命令：
+```shell
+	$openssl x509 -req -days 365 -sha256 -extensions v3_req -CA root.crt -CAkey root.key -CAcreateserial -in server.csr -out server.crt -extfile v3.ext
+	```
+
 
 5. 客户端导入根证书并添加到“信任的根服务站点”                                     
 	![](/res/8.png)                                   
@@ -99,28 +124,26 @@
 	![](/res/13.png)                                 
 	![](/res/14.png)                                   
 	![](/res/15.png)                                         
-6. golang实现简单的https服务器
+6. Nodejs实现简单的https服务器
 	
-	```Go
-	package main
-
-	import (
-		"io"
-		"log"
-		"net/http"
-	)
-	
-	func handler(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, "golang https server")
+	```javascript
+	const fs = require('fs');
+	const credentials = {
+	   ca: fs.readFileSync('./root.crt'),
+	   cert: fs.readFileSync('./server.crt'),
+	   key: fs.readFileSync('./server.key'),
 	}
-	
-	func main() {
-		http.HandleFunc("/", handler)
-		if err := http.ListenAndServeTLS(":8080", "server.crt", "server.key", nil); err != nil {
-			log.Fatal("ListenAndServe:", err)
-		}
+	const https = require('https');
+	const credentials = {
+	   ca: fs.readFileSync('./root.crt'),
+	   cert: fs.readFileSync('./server.crt'),
+	   key: fs.readFileSync('./server.key'),
 	}
-
+	https.createServer(credentials, (req, res) => {
+	   res.writeHead(200);
+      res.end('hello world\n');
+	}).listen(9999);
+	console.log('server running: http://localhost:9999');
 	```
 
 7. 在浏览器中测试                                             
@@ -174,101 +197,13 @@
 	![](/res/21.png)
 3. 修改服务器代码
 	
-	```Go
-	package main
-	
-	import (
-		"crypto/tls"
-		"crypto/x509"
-		"io"
-		"io/ioutil"
-		"log"
-		"net/http"
-	)
-	
-	type httpsHandler struct {
-	}
-	
-	func (*httpsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, "golang https server!!!")
-	}
-	
-	func main() {
-		pool := x509.NewCertPool()
-		caCertPath := "root.crt"
-	
-		caCrt, err := ioutil.ReadFile(caCertPath)
-		if err != nil {
-			log.Fatal("ReadFile err:", err)
-			return
-		}
-		pool.AppendCertsFromPEM(caCrt)
-	
-		s := &http.Server{
-			Addr:    ":8080",
-			Handler: &httpsHandler{},
-			TLSConfig: &tls.Config{
-				ClientCAs:  pool,
-				ClientAuth: tls.RequireAndVerifyClientCert,
-			},
-		}
-	
-		if err = s.ListenAndServeTLS("server.crt", "server.key"); err != nil {
-			log.Fatal("ListenAndServeTLS err:", err)
-		}
-	}
-
+	```javascript
+    // 这里比较简单，只需要在credentials里添加`requestCert: true`即可。如果需要强制验证，再添加`rejectUnauthorized: true`。因为node服务器也会验证ca的有效性，有需要的话再添加`process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";`	
 	```
 4. 在浏览器中测试                                                
 	![](/res/22.png)
-5. 使用golang访问https服务器
-
-	```Go
-	package main
-
-	import (
-		"crypto/tls"
-		"crypto/x509"
-		"io/ioutil"
-		"log"
-		"net/http"
-	)
-	
-	func main() {
-		pool := x509.NewCertPool()
-		caCertPath := "root.crt"
-	
-		caCrt, err := ioutil.ReadFile(caCertPath)
-		if err != nil {
-			log.Fatal("ReadFile err:", err)
-			return
-		}
-		pool.AppendCertsFromPEM(caCrt)
-	
-		cliCrt, err := tls.LoadX509KeyPair("client.crt", "client.key")
-		if err != nil {
-			log.Fatal("LoadX509KeyPair err:", err)
-			return
-		}
-	
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:      pool,
-				Certificates: []tls.Certificate{cliCrt},
-			},
-		}
-		client := &http.Client{Transport: tr}
-		resp, err := client.Get("https://localhost:8080")
-		if err != nil {
-			log.Fatal("client error:", err)
-			return
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		log.Println(string(body))
-	}
-
-	```	
 
 ###结语
 希望通过这次实例能让大家更好的理解、应用https，谢谢观看。
+
+
