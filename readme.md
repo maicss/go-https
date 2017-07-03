@@ -95,8 +95,9 @@
 
 所以上一步的制作要添加一个参数：`v3.ext`
 
-创建一个名为`v3.ext`的文件
-```
+创建一个名为`v3.ext`的文件:
+
+``` ext
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
 keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
@@ -110,8 +111,9 @@ DNS.3 = 192.168.2.144
 ```
 
 然后使用命令：
+
 ```shell
-	$openssl x509 -req -days 365 -sha256 -extensions v3_req -CA root.crt -CAkey root.key -CAcreateserial -in server.csr -out server.crt -extfile v3.ext
+$openssl x509 -req -days 365 -sha256 -extensions v3_req -CA root.crt -CAkey root.key -CAcreateserial -in server.csr -out server.crt -extfile v3.ext
 ```
 
 
@@ -142,8 +144,8 @@ DNS.3 = 192.168.2.144
 	https.createServer(credentials, (req, res) => {
 	   res.writeHead(200);
       res.end('hello world\n');
-	}).listen(9999);
-	console.log('server running: http://localhost:9999');
+	}).listen(8080);
+	console.log('server running: http://localhost:8080');
 	```
 
 7. 在浏览器中测试                                             
