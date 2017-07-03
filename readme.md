@@ -112,7 +112,7 @@ DNS.3 = 192.168.2.144
 然后使用命令：
 ```shell
 	$openssl x509 -req -days 365 -sha256 -extensions v3_req -CA root.crt -CAkey root.key -CAcreateserial -in server.csr -out server.crt -extfile v3.ext
-	```
+```
 
 
 5. 客户端导入根证书并添加到“信任的根服务站点”                                     
@@ -198,7 +198,9 @@ DNS.3 = 192.168.2.144
 3. 修改服务器代码
 	
 	```javascript
-    // 这里比较简单，只需要在credentials里添加`requestCert: true`即可。如果需要强制验证，再添加`rejectUnauthorized: true`。因为node服务器也会验证ca的有效性，有需要的话再添加`process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";`	
+    // 这里比较简单，只需要在credentials里添加`requestCert: true`即可。
+    // 如果需要强制验证，再添加`rejectUnauthorized: true`。
+    // 因为node服务器也会验证ca的有效性，有需要的话再添加`process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";`	
 	```
 4. 在浏览器中测试                                                
 	![](/res/22.png)
